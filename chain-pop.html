@@ -193,7 +193,7 @@ function popGroup(group) {
   if (group.length < 2) return;
 
   // Save undo snapshot before mutating
-  undoSnapshot = { grid: grid.map(row => [...row]), score };
+  if (undosLeft > 0) undoSnapshot = { grid: grid.map(row => [...row]), score };
 
   group.forEach(([r, c]) => { grid[r][c] = -1; });
   score += group.length * group.length;
@@ -283,6 +283,8 @@ function undo() {
   score = undoSnapshot.score;
   undoSnapshot = null;
   undosLeft = 0;
+  gameOver = false;
+  document.getElementById('overlay').classList.remove('visible');
   render();
 }
 
