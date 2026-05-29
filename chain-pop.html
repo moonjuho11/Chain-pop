@@ -150,6 +150,27 @@ function generateGrid() {
   );
 }
 
+function findGroup(r, c) {
+  const color = grid[r][c];
+  if (color === -1) return [];
+  const visited = new Set();
+  const queue = [[r, c]];
+  const key = (r, c) => r * COLS + c;
+  visited.add(key(r, c));
+  while (queue.length) {
+    const [cr, cc] = queue.shift();
+    for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+      const nr = cr + dr, nc = cc + dc;
+      if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS &&
+          !visited.has(key(nr, nc)) && grid[nr][nc] === color) {
+        visited.add(key(nr, nc));
+        queue.push([nr, nc]);
+      }
+    }
+  }
+  return [...visited].map(k => [Math.floor(k / COLS), k % COLS]);
+}
+
 function getBest() {
   try { return localStorage.getItem('chainpop-best') || 0; } catch { return 0; }
 }
@@ -168,6 +189,20 @@ function render() {
       tile.dataset.color = grid[r][c];
       tile.dataset.r = r;
       tile.dataset.c = c;
+
+      tile.addEventListener('mouseenter', () => {
+        const group = findGroup(r, c);
+        if (group.length < 2) return;
+        group.forEach(([gr, gc]) => {
+          document.querySelector(`.tile[data-r="${gr}"][data-c="${gc}"]`)
+            ?.classList.add('highlighted');
+        });
+      });
+      tile.addEventListener('mouseleave', () => {
+        document.querySelectorAll('.tile.highlighted')
+          .forEach(t => t.classList.remove('highlighted'));
+      });
+
       gridEl.appendChild(tile);
     }
   }
