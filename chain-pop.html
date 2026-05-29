@@ -133,12 +133,14 @@ let grid = [];        // 2D array [row][col], value = color index (0-3) or -1 (e
 let score = 0;
 let undoSnapshot = null;
 let undosLeft = 1;
+let gameOver = false;
 
 // --- Bootstrap (placeholder render) ---
 function startNewGame() {
   score = 0;
   undosLeft = 1;
   undoSnapshot = null;
+  gameOver = false;
   grid = generateGrid();
   document.getElementById('overlay').classList.remove('visible');
   render();
@@ -172,7 +174,7 @@ function findGroup(r, c) {
 }
 
 function getBest() {
-  try { return localStorage.getItem('chainpop-best') || 0; } catch { return 0; }
+  try { return parseInt(localStorage.getItem('chainpop-best') || '0', 10); } catch { return 0; }
 }
 
 function applyGravity() {
@@ -197,17 +199,18 @@ function popGroup(group) {
   score += group.length * group.length;
   applyGravity();
 
-  const best = parseInt(getBest());
+  const best = getBest();
   if (score > best) {
     try { localStorage.setItem('chainpop-best', score); } catch {}
   }
 }
 
 function checkEndConditions() {
+  if (gameOver) return;
   const isEmpty = grid.every(row => row.every(v => v === -1));
   if (isEmpty) {
     score += 500;
-    const best = parseInt(getBest());
+    const best = getBest();
     if (score > best) {
       try { localStorage.setItem('chainpop-best', score); } catch {}
     }
@@ -225,6 +228,7 @@ function checkEndConditions() {
 }
 
 function showOverlay(title, msg) {
+  gameOver = true;
   document.getElementById('overlay-title').textContent = title;
   document.getElementById('overlay-msg').textContent = msg;
   document.getElementById('overlay').classList.add('visible');
