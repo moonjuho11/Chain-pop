@@ -203,7 +203,32 @@ function popGroup(group) {
   }
 }
 
-function checkEndConditions() {}  // implemented in Task 4
+function checkEndConditions() {
+  const isEmpty = grid.every(row => row.every(v => v === -1));
+  if (isEmpty) {
+    score += 500;
+    const best = parseInt(getBest());
+    if (score > best) {
+      try { localStorage.setItem('chainpop-best', score); } catch {}
+    }
+    render();
+    showOverlay('You Win! 🎉', `Score: ${score} (+500 board clear bonus)`);
+    return;
+  }
+
+  const hasMove = grid.some((row, r) =>
+    row.some((_, c) => findGroup(r, c).length >= 2)
+  );
+  if (!hasMove) {
+    showOverlay('No Moves Left', `Final Score: ${score}`);
+  }
+}
+
+function showOverlay(title, msg) {
+  document.getElementById('overlay-title').textContent = title;
+  document.getElementById('overlay-msg').textContent = msg;
+  document.getElementById('overlay').classList.add('visible');
+}
 
 function render() {
   document.getElementById('score-display').textContent = score;
