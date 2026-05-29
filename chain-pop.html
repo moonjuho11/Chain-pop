@@ -277,7 +277,14 @@ function render() {
 document.getElementById('new-game-btn').addEventListener('click', startNewGame);
 document.getElementById('undo-btn').addEventListener('click', undo);
 document.getElementById('play-again-btn').addEventListener('click', startNewGame);
-function undo() {}  // implemented in Task 5
+function undo() {
+  if (!undoSnapshot || undosLeft === 0) return;
+  grid = undoSnapshot.grid;
+  score = undoSnapshot.score;
+  undoSnapshot = null;
+  undosLeft = 0;
+  render();
+}
 
 startNewGame();
 </script>
