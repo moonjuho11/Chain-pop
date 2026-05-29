@@ -56,6 +56,7 @@
     transition: transform 0.08s, opacity 0.15s;
   }
   .tile:hover { transform: scale(1.08); }
+  .tile[data-color="-1"]:hover { transform: none; }
   .tile.highlighted { outline: 2px solid rgba(255,255,255,0.8); transform: scale(1.05); }
   .tile.popping { transform: scale(0); opacity: 0; }
   .tile[data-color="0"] { background: #9f7aea; }
@@ -121,7 +122,7 @@
   <div id="overlay-box">
     <h2 id="overlay-title">You Win!</h2>
     <p id="overlay-msg">Score: 0</p>
-    <button onclick="startNewGame()">Play Again</button>
+    <button id="play-again-btn">Play Again</button>
   </div>
 </div>
 
@@ -149,10 +150,15 @@ function generateGrid() {
   );
 }
 
+function getBest() {
+  try { return localStorage.getItem('chainpop-best') || 0; } catch { return 0; }
+}
+
 function render() {
   document.getElementById('score-display').textContent = score;
-  document.getElementById('best-display').textContent = localStorage.getItem('chainpop-best') || 0;
+  document.getElementById('best-display').textContent = getBest();
   document.getElementById('undo-btn').disabled = undosLeft === 0 || undoSnapshot === null;
+  document.getElementById('undo-btn').textContent = `UNDO (${undosLeft})`;
   const gridEl = document.getElementById('grid');
   gridEl.innerHTML = '';
   for (let r = 0; r < ROWS; r++) {
@@ -169,6 +175,7 @@ function render() {
 
 document.getElementById('new-game-btn').addEventListener('click', startNewGame);
 document.getElementById('undo-btn').addEventListener('click', undo);
+document.getElementById('play-again-btn').addEventListener('click', startNewGame);
 function undo() {}  // implemented in Task 5
 
 startNewGame();
