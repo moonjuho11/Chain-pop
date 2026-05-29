@@ -54,6 +54,8 @@
     border-radius: 5px;
     cursor: pointer;
     transition: transform 0.12s ease, opacity 0.12s ease;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
   .tile:hover { transform: scale(1.08); }
   .tile[data-color="-1"]:hover { transform: none; }
