@@ -53,7 +53,7 @@
     aspect-ratio: 1;
     border-radius: 5px;
     cursor: pointer;
-    transition: transform 0.08s, opacity 0.15s;
+    transition: transform 0.12s ease, opacity 0.12s ease;
   }
   .tile:hover { transform: scale(1.08); }
   .tile[data-color="-1"]:hover { transform: none; }
@@ -191,18 +191,24 @@ function applyGravity() {
 
 function popGroup(group) {
   if (group.length < 2) return;
-
-  // Save undo snapshot before mutating
   if (undosLeft > 0) undoSnapshot = { grid: grid.map(row => [...row]), score };
 
-  group.forEach(([r, c]) => { grid[r][c] = -1; });
-  score += group.length * group.length;
-  applyGravity();
+  group.forEach(([r, c]) => {
+    document.querySelector(`.tile[data-r="${r}"][data-c="${c}"]`)
+      ?.classList.add('popping');
+  });
 
-  const best = getBest();
-  if (score > best) {
-    try { localStorage.setItem('chainpop-best', score); } catch {}
-  }
+  setTimeout(() => {
+    group.forEach(([r, c]) => { grid[r][c] = -1; });
+    score += group.length * group.length;
+    applyGravity();
+    const best = getBest();
+    if (score > best) {
+      try { localStorage.setItem('chainpop-best', score); } catch {}
+    }
+    render();
+    checkEndConditions();
+  }, 130);
 }
 
 function checkEndConditions() {
@@ -265,8 +271,6 @@ function render() {
         const group = findGroup(r, c);
         if (group.length < 2) return;
         popGroup(group);
-        render();
-        checkEndConditions();
       });
 
       gridEl.appendChild(tile);
