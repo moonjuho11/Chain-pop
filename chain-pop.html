@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chain Pop</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0d0d1a;
+    color: #e2e8f0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 16px;
+  }
+
+  h1 { font-size: 1.5rem; letter-spacing: 4px; margin-bottom: 16px; color: #9f7aea; }
+
+  #hud {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 12px;
+    font-size: 0.85rem;
+    font-family: monospace;
+  }
+  #hud span { color: #718096; }
+  #hud strong { color: #f6c90e; }
+  #undo-btn {
+    background: #2d3748;
+    border: 1px solid #4a5568;
+    color: #e2e8f0;
+    padding: 4px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-family: monospace;
+  }
+  #undo-btn:disabled { opacity: 0.3; cursor: default; }
+
+  #grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    width: min(480px, 96vw);
+  }
+
+  .tile {
+    aspect-ratio: 1;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: transform 0.08s, opacity 0.15s;
+  }
+  .tile:hover { transform: scale(1.08); }
+  .tile.highlighted { outline: 2px solid rgba(255,255,255,0.8); transform: scale(1.05); }
+  .tile.popping { transform: scale(0); opacity: 0; }
+  .tile[data-color="0"] { background: #9f7aea; }
+  .tile[data-color="1"] { background: #e94560; }
+  .tile[data-color="2"] { background: #63b3ed; }
+  .tile[data-color="3"] { background: #f6c90e; }
+  .tile[data-color="-1"] { background: transparent; cursor: default; }
+
+  #new-game-btn {
+    margin-top: 14px;
+    background: #2d3748;
+    border: 1px solid #4a5568;
+    color: #e2e8f0;
+    padding: 8px 28px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+  }
+  #new-game-btn:hover { background: #4a5568; }
+
+  #overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+  #overlay.visible { display: flex; }
+  #overlay-box {
+    background: #1a1a2e;
+    border: 1px solid #4a5568;
+    border-radius: 12px;
+    padding: 32px 48px;
+    text-align: center;
+  }
+  #overlay-box h2 { font-size: 1.6rem; margin-bottom: 12px; }
+  #overlay-box p { color: #a0aec0; margin-bottom: 20px; font-family: monospace; }
+  #overlay-box button {
+    background: #9f7aea;
+    border: none;
+    color: #fff;
+    padding: 10px 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+</style>
+</head>
+<body>
+<h1>CHAIN POP</h1>
+<div id="hud">
+  <span>SCORE <strong id="score-display">0</strong></span>
+  <span>BEST <strong id="best-display">0</strong></span>
+  <button id="undo-btn" disabled>UNDO (1)</button>
+</div>
+<div id="grid"></div>
+<button id="new-game-btn">New Game</button>
+
+<div id="overlay">
+  <div id="overlay-box">
+    <h2 id="overlay-title">You Win!</h2>
+    <p id="overlay-msg">Score: 0</p>
+    <button onclick="startNewGame()">Play Again</button>
+  </div>
+</div>
+
+<script>
+// --- State ---
+const ROWS = 8, COLS = 8, NUM_COLORS = 4;
+let grid = [];        // 2D array [row][col], value = color index (0-3) or -1 (empty)
+let score = 0;
+let undoSnapshot = null;
+let undosLeft = 1;
+
+// --- Bootstrap (placeholder render) ---
+function startNewGame() {
+  score = 0;
+  undosLeft = 1;
+  undoSnapshot = null;
+  grid = generateGrid();
+  document.getElementById('overlay').classList.remove('visible');
+  render();
+}
+
+function generateGrid() {
+  return Array.from({ length: ROWS }, () =>
+    Array.from({ length: COLS }, () => Math.floor(Math.random() * NUM_COLORS))
+  );
+}
+
+function render() {
+  document.getElementById('score-display').textContent = score;
+  document.getElementById('best-display').textContent = localStorage.getItem('chainpop-best') || 0;
+  document.getElementById('undo-btn').disabled = undosLeft === 0 || undoSnapshot === null;
+  const gridEl = document.getElementById('grid');
+  gridEl.innerHTML = '';
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.dataset.color = grid[r][c];
+      tile.dataset.r = r;
+      tile.dataset.c = c;
+      gridEl.appendChild(tile);
+    }
+  }
+}
+
+document.getElementById('new-game-btn').addEventListener('click', startNewGame);
+document.getElementById('undo-btn').addEventListener('click', undo);
+function undo() {}  // implemented in Task 5
+
+startNewGame();
+</script>
+</body>
+</html>
