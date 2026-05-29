@@ -137,9 +137,12 @@ let undoSnapshot = null;
 let undosLeft = 1;
 let gameOver = false;
 let animating = false;
+let popTimer = null;
 
 // --- Bootstrap (placeholder render) ---
 function startNewGame() {
+  clearTimeout(popTimer);
+  animating = false;
   score = 0;
   undosLeft = 1;
   undoSnapshot = null;
@@ -203,7 +206,7 @@ function popGroup(group) {
       ?.classList.add('popping');
   });
 
-  setTimeout(() => {
+  popTimer = setTimeout(() => {
     group.forEach(([r, c]) => { grid[r][c] = -1; });
     score += group.length * group.length;
     applyGravity();
