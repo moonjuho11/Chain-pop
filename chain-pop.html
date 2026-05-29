@@ -134,6 +134,7 @@ let score = 0;
 let undoSnapshot = null;
 let undosLeft = 1;
 let gameOver = false;
+let animating = false;
 
 // --- Bootstrap (placeholder render) ---
 function startNewGame() {
@@ -141,6 +142,7 @@ function startNewGame() {
   undosLeft = 1;
   undoSnapshot = null;
   gameOver = false;
+  animating = false;
   grid = generateGrid();
   document.getElementById('overlay').classList.remove('visible');
   render();
@@ -190,7 +192,8 @@ function applyGravity() {
 }
 
 function popGroup(group) {
-  if (group.length < 2) return;
+  if (group.length < 2 || animating) return;
+  animating = true;
   if (undosLeft > 0) undoSnapshot = { grid: grid.map(row => [...row]), score };
 
   group.forEach(([r, c]) => {
@@ -206,9 +209,10 @@ function popGroup(group) {
     if (score > best) {
       try { localStorage.setItem('chainpop-best', score); } catch {}
     }
+    animating = false;
     render();
     checkEndConditions();
-  }, 130);
+  }, 150);
 }
 
 function checkEndConditions() {
@@ -282,7 +286,7 @@ document.getElementById('new-game-btn').addEventListener('click', startNewGame);
 document.getElementById('undo-btn').addEventListener('click', undo);
 document.getElementById('play-again-btn').addEventListener('click', startNewGame);
 function undo() {
-  if (!undoSnapshot || undosLeft === 0) return;
+  if (!undoSnapshot || undosLeft === 0 || animating) return;
   grid = undoSnapshot.grid;
   score = undoSnapshot.score;
   undoSnapshot = null;
