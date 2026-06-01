@@ -114,7 +114,6 @@
 <h1>CHAIN POP</h1>
 <div id="hud">
   <span>SCORE <strong id="score-display">0</strong></span>
-  <span>MOVES <strong id="moves-display">25</strong></span>
   <span>BEST <strong id="best-display">0</strong></span>
   <button id="undo-btn" disabled>UNDO (1)</button>
 </div>
@@ -135,10 +134,8 @@
 <script>
 // --- State ---
 const ROWS = 8, COLS = 8, NUM_COLORS = 4;
-const MAX_MOVES = 25;
 let grid = [];        // 2D array [row][col], value = color index (0-3) or -1 (empty)
 let score = 0;
-let movesLeft = MAX_MOVES;
 let undoSnapshot = null;
 let undosLeft = 1;
 let gameOver = false;
@@ -150,13 +147,11 @@ function startNewGame() {
   clearTimeout(popTimer);
   animating = false;
   score = 0;
-  movesLeft = MAX_MOVES;
   undosLeft = 1;
   undoSnapshot = null;
   gameOver = false;
   grid = generateGrid();
   document.getElementById('overlay').classList.remove('visible');
-  document.getElementById('watch-ad-btn').style.display = 'none';
   render();
 }
 
@@ -203,10 +198,20 @@ function applyGravity() {
   }
 }
 
+function refillGrid() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r][c] === -1) {
+        grid[r][c] = Math.floor(Math.random() * NUM_COLORS);
+      }
+    }
+  }
+}
+
 function popGroup(group) {
   if (group.length < 2 || animating || gameOver) return;
   animating = true;
-  if (undosLeft > 0) undoSnapshot = { grid: grid.map(row => [...row]), score, movesLeft };
+  if (undosLeft > 0) undoSnapshot = { grid: grid.map(row => [...row]), score };
 
   group.forEach(([r, c]) => {
     document.querySelector(`.tile[data-r="${r}"][data-c="${c}"]`)
@@ -216,8 +221,8 @@ function popGroup(group) {
   popTimer = setTimeout(() => {
     group.forEach(([r, c]) => { grid[r][c] = -1; });
     score += group.length * group.length;
-    movesLeft--;
     applyGravity();
+    refillGrid();
     const best = getBest();
     if (score > best) {
       try { localStorage.setItem('chainpop-best', score); } catch {}
@@ -230,24 +235,6 @@ function popGroup(group) {
 
 function checkEndConditions() {
   if (gameOver) return;
-
-  if (movesLeft === 0) {
-    showOverlay('Out of Moves!', `Score: ${score}`);
-    document.getElementById('watch-ad-btn').style.display = 'inline-block';
-    return;
-  }
-
-  const isEmpty = grid.every(row => row.every(v => v === -1));
-  if (isEmpty) {
-    score += 500;
-    const best = getBest();
-    if (score > best) {
-      try { localStorage.setItem('chainpop-best', score); } catch {}
-    }
-    render();
-    showOverlay('You Win! 🎉', `Score: ${score} (+500 board clear bonus)`);
-    return;
-  }
 
   const hasMove = grid.some((row, r) =>
     row.some((_, c) => findGroup(r, c).length >= 2)
@@ -269,9 +256,6 @@ function render() {
   document.getElementById('best-display').textContent = getBest();
   document.getElementById('undo-btn').disabled = undosLeft === 0 || undoSnapshot === null;
   document.getElementById('undo-btn').textContent = `UNDO (${undosLeft})`;
-  const movesEl = document.getElementById('moves-display');
-  movesEl.textContent = movesLeft;
-  movesEl.style.color = movesLeft <= 5 ? '#e94560' : '#f6c90e';
   const gridEl = document.getElementById('grid');
   gridEl.innerHTML = '';
   for (let r = 0; r < ROWS; r++) {
@@ -309,7 +293,6 @@ document.getElementById('new-game-btn').addEventListener('click', startNewGame);
 document.getElementById('undo-btn').addEventListener('click', undo);
 document.getElementById('play-again-btn').addEventListener('click', startNewGame);
 document.getElementById('watch-ad-btn').addEventListener('click', () => {
-  movesLeft += 8;
   gameOver = false;
   document.getElementById('watch-ad-btn').style.display = 'none';
   document.getElementById('overlay').classList.remove('visible');
@@ -319,7 +302,6 @@ function undo() {
   if (!undoSnapshot || undosLeft === 0 || animating) return;
   grid = undoSnapshot.grid;
   score = undoSnapshot.score;
-  movesLeft = undoSnapshot.movesLeft;
   undoSnapshot = null;
   undosLeft = 0;
   gameOver = false;
