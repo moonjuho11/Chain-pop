@@ -99,7 +99,7 @@
   }
   #overlay-box h2 { font-size: 1.6rem; margin-bottom: 12px; }
   #overlay-box p { color: #a0aec0; margin-bottom: 20px; font-family: monospace; }
-  #overlay-box button {
+  #play-again-btn {
     background: #9f7aea;
     border: none;
     color: #fff;
@@ -125,7 +125,10 @@
   <div id="overlay-box">
     <h2 id="overlay-title">You Win!</h2>
     <p id="overlay-msg">Score: 0</p>
-    <button id="play-again-btn">Play Again</button>
+    <div id="overlay-actions" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <button id="watch-ad-btn" style="display:none;background:#68d391;border:none;color:#1a2f1a;padding:10px 24px;border-radius:8px;cursor:pointer;font-size:1rem;font-weight:bold;">Watch Ad (+8 Moves)</button>
+      <button id="play-again-btn">Play Again</button>
+    </div>
   </div>
 </div>
 
@@ -154,6 +157,7 @@ function startNewGame() {
   animating = false;
   grid = generateGrid();
   document.getElementById('overlay').classList.remove('visible');
+  document.getElementById('watch-ad-btn').style.display = 'none';
   render();
 }
 
@@ -213,6 +217,7 @@ function popGroup(group) {
   popTimer = setTimeout(() => {
     group.forEach(([r, c]) => { grid[r][c] = -1; });
     score += group.length * group.length;
+    movesLeft--;
     applyGravity();
     const best = getBest();
     if (score > best) {
@@ -226,6 +231,13 @@ function popGroup(group) {
 
 function checkEndConditions() {
   if (gameOver) return;
+
+  if (movesLeft === 0) {
+    showOverlay('Out of Moves!', `Score: ${score}`);
+    document.getElementById('watch-ad-btn').style.display = 'inline-block';
+    return;
+  }
+
   const isEmpty = grid.every(row => row.every(v => v === -1));
   if (isEmpty) {
     score += 500;
@@ -297,6 +309,13 @@ function render() {
 document.getElementById('new-game-btn').addEventListener('click', startNewGame);
 document.getElementById('undo-btn').addEventListener('click', undo);
 document.getElementById('play-again-btn').addEventListener('click', startNewGame);
+document.getElementById('watch-ad-btn').addEventListener('click', () => {
+  movesLeft += 8;
+  gameOver = false;
+  document.getElementById('watch-ad-btn').style.display = 'none';
+  document.getElementById('overlay').classList.remove('visible');
+  render();
+});
 function undo() {
   if (!undoSnapshot || undosLeft === 0 || animating) return;
   grid = undoSnapshot.grid;
