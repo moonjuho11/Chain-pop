@@ -125,7 +125,7 @@
     <h2 id="overlay-title">You Win!</h2>
     <p id="overlay-msg">Score: 0</p>
     <div id="overlay-actions" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-      <button id="watch-ad-btn" style="display:none;background:#68d391;border:none;color:#1a2f1a;padding:10px 24px;border-radius:8px;cursor:pointer;font-size:1rem;font-weight:bold;">Watch Ad (+8 Moves)</button>
+      <button id="watch-ad-btn" style="display:none;background:#68d391;border:none;color:#1a2f1a;padding:10px 24px;border-radius:8px;cursor:pointer;font-size:1rem;font-weight:bold;">Watch Ad (Bomb 💣)</button>
       <button id="play-again-btn">Play Again</button>
     </div>
   </div>
@@ -152,6 +152,7 @@ function startNewGame() {
   gameOver = false;
   grid = generateGrid();
   document.getElementById('overlay').classList.remove('visible');
+  document.getElementById('watch-ad-btn').style.display = 'none';
   render();
 }
 
@@ -208,6 +209,18 @@ function refillGrid() {
   }
 }
 
+function applyBomb() {
+  const r = Math.floor(Math.random() * (ROWS - 2)) + 1;
+  const c = Math.floor(Math.random() * (COLS - 2)) + 1;
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      grid[r + dr][c + dc] = -1;
+    }
+  }
+  applyGravity();
+  refillGrid();
+}
+
 function popGroup(group) {
   if (group.length < 2 || animating || gameOver) return;
   animating = true;
@@ -241,6 +254,7 @@ function checkEndConditions() {
   );
   if (!hasMove) {
     showOverlay('No Moves Left', `Final Score: ${score}`);
+    document.getElementById('watch-ad-btn').style.display = 'inline-block';
   }
 }
 
@@ -296,7 +310,9 @@ document.getElementById('watch-ad-btn').addEventListener('click', () => {
   gameOver = false;
   document.getElementById('watch-ad-btn').style.display = 'none';
   document.getElementById('overlay').classList.remove('visible');
+  applyBomb();
   render();
+  checkEndConditions();
 });
 function undo() {
   if (!undoSnapshot || undosLeft === 0 || animating) return;
