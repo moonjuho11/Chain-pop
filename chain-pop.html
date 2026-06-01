@@ -453,6 +453,10 @@ function startNewGame() {
     const r = parseInt(tile.dataset.r), c = parseInt(tile.dataset.c);
     tile.style.animationDelay = `${(r + c) * 18}ms`;
     tile.classList.add('entering');
+    tile.addEventListener('animationend', () => {
+      tile.classList.remove('entering');
+      tile.style.animationDelay = '';
+    }, { once: true });
   });
 }
 
@@ -671,6 +675,10 @@ function popGroup(group) {
       if (!tile) return;
       tile.style.animationDelay = `${c * 18}ms`;
       tile.classList.add('falling');
+      tile.addEventListener('animationend', () => {
+        tile.classList.remove('falling');
+        tile.style.animationDelay = '';
+      }, { once: true });
     });
     const tileStep = (() => {
       const t = document.querySelector('.tile');
