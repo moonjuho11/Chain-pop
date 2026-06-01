@@ -51,12 +51,39 @@
     font-weight: bold;
   }
 
+  /* F. Combo badge */
+  @keyframes combo-pulse {
+    0%, 100% { transform: scale(1); }
+    50%       { transform: scale(1.15); }
+  }
+  #combo-badge {
+    display: none;
+    color: #f6c90e;
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 1rem;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    height: 20px;
+    animation: combo-pulse 0.4s ease infinite;
+  }
+
   #grid {
     display: grid;
     grid-template-columns: repeat(8, 1fr);
     gap: 4px;
     width: min(480px, 96vw);
   }
+
+  /* G. Board shake */
+  @keyframes grid-shake {
+    0%,100% { transform: translateX(0); }
+    20%     { transform: translateX(-6px); }
+    40%     { transform: translateX(6px); }
+    60%     { transform: translateX(-4px); }
+    80%     { transform: translateX(4px); }
+  }
+  #grid.shake { animation: grid-shake 0.4s ease; }
 
   .tile {
     aspect-ratio: 1;
@@ -68,13 +95,80 @@
   }
   .tile:hover { transform: scale(1.08); }
   .tile[data-color="-1"]:hover { transform: none; }
-  .tile.highlighted { outline: 2px solid rgba(255,255,255,0.8); transform: scale(1.05); }
+
+  /* C. Shimmer on hover group */
+  @keyframes shimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+  .tile.highlighted {
+    outline: 2px solid rgba(255,255,255,0.8);
+    transform: scale(1.05);
+    background-image: linear-gradient(90deg, transparent 30%, rgba(255,255,255,0.25) 50%, transparent 70%);
+    background-size: 200% 100%;
+    animation: shimmer 0.8s linear infinite;
+  }
+
   .tile.popping { transform: scale(0); opacity: 0; }
   .tile[data-color="0"] { background: #9f7aea; }
   .tile[data-color="1"] { background: #e94560; }
   .tile[data-color="2"] { background: #63b3ed; }
   .tile[data-color="3"] { background: #f6c90e; }
   .tile[data-color="-1"] { background: transparent; cursor: default; }
+
+  /* A. Particle burst */
+  @keyframes particle-fly {
+    0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+  }
+  .particle {
+    position: fixed;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: particle-fly 0.4s ease forwards;
+    z-index: 20;
+  }
+
+  /* B. Score pop */
+  @keyframes score-pop {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.5); color: #fff; }
+    100% { transform: scale(1); }
+  }
+  .score-bump { animation: score-pop 0.3s ease; }
+
+  /* E. Floating score text */
+  @keyframes float-score {
+    0%   { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-50px) scale(0.8); }
+  }
+  .float-score {
+    position: fixed;
+    pointer-events: none;
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 1.2rem;
+    color: #f6c90e;
+    animation: float-score 0.7s ease forwards;
+    z-index: 20;
+  }
+
+  /* J. Danger pulse */
+  @keyframes danger-pulse {
+    0%, 100% { transform: scale(1); color: #e94560; }
+    50%       { transform: scale(1.2); color: #fff; }
+  }
+  #moves-display.danger { animation: danger-pulse 0.6s ease infinite; }
+  body.danger-mode::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    box-shadow: inset 0 0 60px rgba(233,69,96,0.25);
+    z-index: 5;
+  }
 
   #new-game-btn {
     margin-top: 14px;
@@ -127,6 +221,7 @@
   <span>BEST <strong id="best-display">0</strong></span>
   <button id="undo-btn" disabled>UNDO (1)</button>
 </div>
+<div id="combo-badge"></div>
 <div id="grid"></div>
 <button id="new-game-btn">New Game</button>
 
@@ -145,7 +240,8 @@
 // --- State ---
 const ROWS = 8, COLS = 8, NUM_COLORS = 4;
 const MAX_MOVES = 25;
-let grid = [];        // 2D array [row][col], value = color index (0-3) or -1 (empty)
+const TILE_COLORS = ['#9f7aea', '#e94560', '#63b3ed', '#f6c90e'];
+let grid = [];
 let score = 0;
 let movesLeft = MAX_MOVES;
 let pendingContinue = null; // 'moves' | 'bomb'
@@ -154,20 +250,25 @@ let undosLeft = 1;
 let gameOver = false;
 let animating = false;
 let popTimer = null;
+let comboStreak = 0;
+let _lastRenderedScore = 0;
 
-// --- Bootstrap (placeholder render) ---
 function startNewGame() {
   clearTimeout(popTimer);
   animating = false;
   score = 0;
+  _lastRenderedScore = 0;
   movesLeft = MAX_MOVES;
   pendingContinue = null;
   undosLeft = 1;
   undoSnapshot = null;
   gameOver = false;
+  comboStreak = 0;
   grid = generateGrid();
   document.getElementById('overlay').classList.remove('visible');
   document.getElementById('watch-ad-btn').style.display = 'none';
+  document.getElementById('combo-badge').style.display = 'none';
+  document.body.classList.remove('danger-mode');
   render();
 }
 
@@ -251,10 +352,62 @@ function applyBomb() {
   refillGrid();
 }
 
+// A. Particle burst — fires at pop time using tile positions
+function spawnParticles(group) {
+  let sumX = 0, sumY = 0, count = 0;
+  group.forEach(([r, c]) => {
+    const el = document.querySelector(`.tile[data-r="${r}"][data-c="${c}"]`);
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    sumX += rect.left + rect.width / 2;
+    sumY += rect.top + rect.height / 2;
+    count++;
+  });
+  if (!count) return;
+  const cx = sumX / count, cy = sumY / count;
+  const color = TILE_COLORS[grid[group[0][0]][group[0][1]]] || '#fff';
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2;
+    const dist = 40 + Math.random() * 25;
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.background = color;
+    p.style.left = (cx - 4) + 'px';
+    p.style.top = (cy - 4) + 'px';
+    p.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+    p.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 420);
+  }
+}
+
+// E. Floating +N score at group center
+function spawnFloatScore(group, points) {
+  let sumX = 0, sumY = 0, count = 0;
+  group.forEach(([r, c]) => {
+    const el = document.querySelector(`.tile[data-r="${r}"][data-c="${c}"]`);
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    sumX += rect.left + rect.width / 2;
+    sumY += rect.top + rect.height / 2;
+    count++;
+  });
+  if (!count) return;
+  const el = document.createElement('div');
+  el.className = 'float-score';
+  el.textContent = `+${points}`;
+  el.style.left = (sumX / count - 16) + 'px';
+  el.style.top = (sumY / count - 10) + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 720);
+}
+
 function popGroup(group) {
   if (group.length < 2 || animating || gameOver) return;
   animating = true;
   if (undosLeft > 0) undoSnapshot = { grid: grid.map(row => [...row]), score, movesLeft };
+
+  spawnParticles(group); // A — fires while tiles are still in DOM
 
   group.forEach(([r, c]) => {
     document.querySelector(`.tile[data-r="${r}"][data-c="${c}"]`)
@@ -262,11 +415,36 @@ function popGroup(group) {
   });
 
   popTimer = setTimeout(() => {
+    const points = group.length * group.length;
+    spawnFloatScore(group, points); // E — tiles still in DOM here
+
     group.forEach(([r, c]) => { grid[r][c] = -1; });
-    score += group.length * group.length;
+    score += points;
     movesLeft--;
     const bonus = getBonusMoves(group.length);
     if (bonus > 0) { movesLeft += bonus; showMovesBonus(bonus); }
+
+    // F. Combo streak
+    if (group.length >= 5) {
+      comboStreak++;
+    } else {
+      comboStreak = 0;
+    }
+    const comboBadge = document.getElementById('combo-badge');
+    if (comboStreak >= 2) {
+      comboBadge.textContent = `×${comboStreak} COMBO!`;
+      comboBadge.style.display = 'block';
+    } else {
+      comboBadge.style.display = 'none';
+    }
+
+    // G. Shake on 8+ tile pop
+    if (group.length >= 8) {
+      const gridEl = document.getElementById('grid');
+      gridEl.classList.add('shake');
+      setTimeout(() => gridEl.classList.remove('shake'), 400);
+    }
+
     applyGravity();
     refillGrid();
     const best = getBest();
@@ -307,13 +485,32 @@ function showOverlay(title, msg) {
 }
 
 function render() {
-  document.getElementById('score-display').textContent = score;
+  // B. Score bump animation
+  const scoreEl = document.getElementById('score-display');
+  if (score > _lastRenderedScore) {
+    scoreEl.classList.remove('score-bump');
+    void scoreEl.offsetWidth; // force reflow to restart animation
+    scoreEl.classList.add('score-bump');
+    setTimeout(() => scoreEl.classList.remove('score-bump'), 300);
+  }
+  _lastRenderedScore = score;
+  scoreEl.textContent = score;
+
   document.getElementById('best-display').textContent = getBest();
   document.getElementById('undo-btn').disabled = undosLeft === 0 || undoSnapshot === null;
   document.getElementById('undo-btn').textContent = `UNDO (${undosLeft})`;
+
+  // J. Danger mode
   const movesEl = document.getElementById('moves-display');
   movesEl.textContent = movesLeft;
-  movesEl.style.color = movesLeft <= 5 ? '#e94560' : '#f6c90e';
+  if (movesLeft <= 5) {
+    movesEl.classList.add('danger');
+    document.body.classList.add('danger-mode');
+  } else {
+    movesEl.classList.remove('danger');
+    document.body.classList.remove('danger-mode');
+  }
+
   const gridEl = document.getElementById('grid');
   gridEl.innerHTML = '';
   for (let r = 0; r < ROWS; r++) {
@@ -327,14 +524,19 @@ function render() {
       tile.addEventListener('mouseenter', () => {
         const group = findGroup(r, c);
         if (group.length < 2) return;
+        // C + D: shimmer (CSS) + color-matched glow (JS)
         group.forEach(([gr, gc]) => {
-          document.querySelector(`.tile[data-r="${gr}"][data-c="${gc}"]`)
-            ?.classList.add('highlighted');
+          const t = document.querySelector(`.tile[data-r="${gr}"][data-c="${gc}"]`);
+          if (!t) return;
+          t.classList.add('highlighted');
+          t.style.boxShadow = `0 0 10px 3px ${TILE_COLORS[grid[gr][gc]] || '#fff'}`;
         });
       });
       tile.addEventListener('mouseleave', () => {
-        document.querySelectorAll('.tile.highlighted')
-          .forEach(t => t.classList.remove('highlighted'));
+        document.querySelectorAll('.tile.highlighted').forEach(t => {
+          t.classList.remove('highlighted');
+          t.style.boxShadow = '';
+        });
       });
       tile.addEventListener('click', () => {
         const group = findGroup(r, c);
@@ -365,6 +567,7 @@ document.getElementById('watch-ad-btn').addEventListener('click', () => {
   render();
   checkEndConditions();
 });
+
 function undo() {
   if (!undoSnapshot || undosLeft === 0 || animating) return;
   grid = undoSnapshot.grid;
