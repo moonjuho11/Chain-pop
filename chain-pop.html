@@ -114,6 +114,7 @@
 <h1>CHAIN POP</h1>
 <div id="hud">
   <span>SCORE <strong id="score-display">0</strong></span>
+  <span>MOVES <strong id="moves-display">25</strong></span>
   <span>BEST <strong id="best-display">0</strong></span>
   <button id="undo-btn" disabled>UNDO (1)</button>
 </div>
@@ -131,8 +132,10 @@
 <script>
 // --- State ---
 const ROWS = 8, COLS = 8, NUM_COLORS = 4;
+const MAX_MOVES = 25;
 let grid = [];        // 2D array [row][col], value = color index (0-3) or -1 (empty)
 let score = 0;
+let movesLeft = MAX_MOVES;
 let undoSnapshot = null;
 let undosLeft = 1;
 let gameOver = false;
@@ -144,6 +147,7 @@ function startNewGame() {
   clearTimeout(popTimer);
   animating = false;
   score = 0;
+  movesLeft = MAX_MOVES;
   undosLeft = 1;
   undoSnapshot = null;
   gameOver = false;
@@ -254,6 +258,9 @@ function render() {
   document.getElementById('best-display').textContent = getBest();
   document.getElementById('undo-btn').disabled = undosLeft === 0 || undoSnapshot === null;
   document.getElementById('undo-btn').textContent = `UNDO (${undosLeft})`;
+  const movesEl = document.getElementById('moves-display');
+  movesEl.textContent = movesLeft;
+  movesEl.style.color = movesLeft <= 5 ? '#e94560' : '#f6c90e';
   const gridEl = document.getElementById('grid');
   gridEl.innerHTML = '';
   for (let r = 0; r < ROWS; r++) {
