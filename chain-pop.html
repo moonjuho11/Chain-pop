@@ -308,6 +308,8 @@ document.getElementById('undo-btn').addEventListener('click', undo);
 document.getElementById('play-again-btn').addEventListener('click', startNewGame);
 document.getElementById('watch-ad-btn').addEventListener('click', () => {
   gameOver = false;
+  undoSnapshot = null;
+  undosLeft = 0;
   document.getElementById('watch-ad-btn').style.display = 'none';
   document.getElementById('overlay').classList.remove('visible');
   applyBomb();
