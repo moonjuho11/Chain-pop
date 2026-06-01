@@ -346,6 +346,21 @@ function getBest() {
   try { return parseInt(localStorage.getItem('chainpop-best') || '0', 10); } catch { return 0; }
 }
 
+function getGravityMoves() {
+  const moves = [];
+  for (let c = 0; c < COLS; c++) {
+    const colTiles = [];
+    for (let r = 0; r < ROWS; r++) {
+      if (grid[r][c] !== -1) colTiles.push(r);
+    }
+    colTiles.forEach((fromRow, i) => {
+      const toRow = ROWS - colTiles.length + i;
+      if (fromRow !== toRow) moves.push({ c, fromRow, toRow });
+    });
+  }
+  return moves;
+}
+
 function applyGravity() {
   for (let c = 0; c < COLS; c++) {
     const tiles = [];
@@ -499,6 +514,7 @@ function popGroup(group) {
       setTimeout(() => gridEl.classList.remove('shake'), 400);
     }
 
+    const gravityMoves = getGravityMoves();
     applyGravity();
     const filled = refillGrid();
     const best = getBest();
@@ -512,6 +528,21 @@ function popGroup(group) {
       if (!tile) return;
       tile.style.animationDelay = `${c * 18}ms`;
       tile.classList.add('falling');
+    });
+    const tileStep = (() => {
+      const t = document.querySelector('.tile');
+      return t ? t.getBoundingClientRect().height + 4 : 60;
+    })();
+    gravityMoves.forEach(({ c, fromRow, toRow }) => {
+      const tile = document.querySelector(`.tile[data-r="${toRow}"][data-c="${c}"]`);
+      if (!tile) return;
+      const offset = (fromRow - toRow) * tileStep;
+      tile.style.transition = 'none';
+      tile.style.transform = `translateY(${offset}px)`;
+      void tile.offsetHeight;
+      tile.style.transition = 'transform 0.28s ease-out';
+      tile.style.transform = 'translateY(0)';
+      setTimeout(() => { tile.style.transition = ''; tile.style.transform = ''; }, 320);
     });
     checkEndConditions();
   }, 150);
