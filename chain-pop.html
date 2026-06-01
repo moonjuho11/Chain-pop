@@ -57,7 +57,7 @@
     50%       { transform: scale(1.15); }
   }
   #combo-badge {
-    display: none;
+    visibility: hidden;
     color: #f6c90e;
     font-family: monospace;
     font-weight: bold;
@@ -267,7 +267,7 @@ function startNewGame() {
   grid = generateGrid();
   document.getElementById('overlay').classList.remove('visible');
   document.getElementById('watch-ad-btn').style.display = 'none';
-  document.getElementById('combo-badge').style.display = 'none';
+  document.getElementById('combo-badge').style.visibility = 'hidden';
   document.body.classList.remove('danger-mode');
   render();
 }
@@ -433,9 +433,9 @@ function popGroup(group) {
     const comboBadge = document.getElementById('combo-badge');
     if (comboStreak >= 2) {
       comboBadge.textContent = `×${comboStreak} COMBO!`;
-      comboBadge.style.display = 'block';
+      comboBadge.style.visibility = 'visible';
     } else {
-      comboBadge.style.display = 'none';
+      comboBadge.style.visibility = 'hidden';
     }
 
     // G. Shake on 8+ tile pop
