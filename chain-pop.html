@@ -85,6 +85,15 @@
   }
   #grid.shake { animation: grid-shake 0.4s ease; }
 
+  @keyframes tile-fall {
+    0%   { transform: translateY(-52px) scaleY(0.7); opacity: 0; }
+    75%  { transform: translateY(4px) scaleY(1.04); opacity: 1; }
+    100% { transform: translateY(0) scaleY(1); opacity: 1; }
+  }
+  .tile.falling {
+    animation: tile-fall 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
   #next-row {
     width: min(480px, 96vw);
     margin-bottom: 6px;
@@ -356,15 +365,18 @@ function fillQueue() {
 }
 
 function refillGrid() {
+  const filled = [];
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       if (grid[r][c] === -1) {
         if (!tileQueue.length) fillQueue();
         grid[r][c] = tileQueue.shift();
+        filled.push([r, c]);
       }
     }
   }
   fillQueue();
+  return filled;
 }
 
 function getBonusMoves(n) {
@@ -488,13 +500,19 @@ function popGroup(group) {
     }
 
     applyGravity();
-    refillGrid();
+    const filled = refillGrid();
     const best = getBest();
     if (score > best) {
       try { localStorage.setItem('chainpop-best', score); } catch {}
     }
     animating = false;
     render();
+    filled.forEach(([r, c]) => {
+      const tile = document.querySelector(`.tile[data-r="${r}"][data-c="${c}"]`);
+      if (!tile) return;
+      tile.style.animationDelay = `${c * 18}ms`;
+      tile.classList.add('falling');
+    });
     checkEndConditions();
   }, 150);
 }
