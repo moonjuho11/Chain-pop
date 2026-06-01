@@ -114,6 +114,7 @@
 <h1>CHAIN POP</h1>
 <div id="hud">
   <span>SCORE <strong id="score-display">0</strong></span>
+  <span>MOVES <strong id="moves-display">25</strong></span>
   <span>BEST <strong id="best-display">0</strong></span>
   <button id="undo-btn" disabled>UNDO (1)</button>
 </div>
@@ -125,7 +126,7 @@
     <h2 id="overlay-title">You Win!</h2>
     <p id="overlay-msg">Score: 0</p>
     <div id="overlay-actions" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-      <button id="watch-ad-btn" style="display:none;background:#68d391;border:none;color:#1a2f1a;padding:10px 24px;border-radius:8px;cursor:pointer;font-size:1rem;font-weight:bold;">Watch Ad (Bomb 💣)</button>
+      <button id="watch-ad-btn" style="display:none;background:#68d391;border:none;color:#1a2f1a;padding:10px 24px;border-radius:8px;cursor:pointer;font-size:1rem;font-weight:bold;">Watch Ad (Continue)</button>
       <button id="play-again-btn">Play Again</button>
     </div>
   </div>
@@ -134,8 +135,11 @@
 <script>
 // --- State ---
 const ROWS = 8, COLS = 8, NUM_COLORS = 4;
+const MAX_MOVES = 25;
 let grid = [];        // 2D array [row][col], value = color index (0-3) or -1 (empty)
 let score = 0;
+let movesLeft = MAX_MOVES;
+let pendingContinue = null; // 'moves' | 'bomb'
 let undoSnapshot = null;
 let undosLeft = 1;
 let gameOver = false;
@@ -147,6 +151,8 @@ function startNewGame() {
   clearTimeout(popTimer);
   animating = false;
   score = 0;
+  movesLeft = MAX_MOVES;
+  pendingContinue = null;
   undosLeft = 1;
   undoSnapshot = null;
   gameOver = false;
@@ -224,7 +230,7 @@ function applyBomb() {
 function popGroup(group) {
   if (group.length < 2 || animating || gameOver) return;
   animating = true;
-  if (undosLeft > 0) undoSnapshot = { grid: grid.map(row => [...row]), score };
+  if (undosLeft > 0) undoSnapshot = { grid: grid.map(row => [...row]), score, movesLeft };
 
   group.forEach(([r, c]) => {
     document.querySelector(`.tile[data-r="${r}"][data-c="${c}"]`)
@@ -234,6 +240,7 @@ function popGroup(group) {
   popTimer = setTimeout(() => {
     group.forEach(([r, c]) => { grid[r][c] = -1; });
     score += group.length * group.length;
+    movesLeft--;
     applyGravity();
     refillGrid();
     const best = getBest();
@@ -249,11 +256,19 @@ function popGroup(group) {
 function checkEndConditions() {
   if (gameOver) return;
 
+  if (movesLeft === 0) {
+    pendingContinue = 'moves';
+    showOverlay('Out of Moves!', `Score: ${score} — Watch an ad for +8 moves`);
+    document.getElementById('watch-ad-btn').style.display = 'inline-block';
+    return;
+  }
+
   const hasMove = grid.some((row, r) =>
     row.some((_, c) => findGroup(r, c).length >= 2)
   );
   if (!hasMove) {
-    showOverlay('No Moves Left', `Final Score: ${score}`);
+    pendingContinue = 'bomb';
+    showOverlay('No Moves Left', `Score: ${score} — Watch an ad to use a bomb`);
     document.getElementById('watch-ad-btn').style.display = 'inline-block';
   }
 }
@@ -270,6 +285,9 @@ function render() {
   document.getElementById('best-display').textContent = getBest();
   document.getElementById('undo-btn').disabled = undosLeft === 0 || undoSnapshot === null;
   document.getElementById('undo-btn').textContent = `UNDO (${undosLeft})`;
+  const movesEl = document.getElementById('moves-display');
+  movesEl.textContent = movesLeft;
+  movesEl.style.color = movesLeft <= 5 ? '#e94560' : '#f6c90e';
   const gridEl = document.getElementById('grid');
   gridEl.innerHTML = '';
   for (let r = 0; r < ROWS; r++) {
@@ -312,7 +330,12 @@ document.getElementById('watch-ad-btn').addEventListener('click', () => {
   undosLeft = 0;
   document.getElementById('watch-ad-btn').style.display = 'none';
   document.getElementById('overlay').classList.remove('visible');
-  applyBomb();
+  if (pendingContinue === 'moves') {
+    movesLeft += 8;
+  } else if (pendingContinue === 'bomb') {
+    applyBomb();
+  }
+  pendingContinue = null;
   render();
   checkEndConditions();
 });
@@ -320,6 +343,7 @@ function undo() {
   if (!undoSnapshot || undosLeft === 0 || animating) return;
   grid = undoSnapshot.grid;
   score = undoSnapshot.score;
+  movesLeft = undoSnapshot.movesLeft;
   undoSnapshot = null;
   undosLeft = 0;
   gameOver = false;
