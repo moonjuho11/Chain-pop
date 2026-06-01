@@ -12,11 +12,54 @@
     color: #e2e8f0;
     font-family: 'Segoe UI', system-ui, sans-serif;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     min-height: 100vh;
     padding: 16px;
+  }
+
+  #game-area {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+  }
+
+  #game-main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #move-legend {
+    font-family: monospace;
+    font-size: 0.75rem;
+    padding-top: 6px;
+    min-width: 96px;
+  }
+  #move-legend .leg-title {
+    color: #4a5568;
+    font-size: 0.62rem;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+  #move-legend .leg-divider {
+    border-top: 1px solid #2d3748;
+    margin: 7px 0;
+  }
+  #move-legend .leg-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 0;
+  }
+  #move-legend .leg-range { color: #718096; width: 30px; }
+  #move-legend .leg-arrow { color: #2d3748; }
+  #move-legend .leg-net  { font-weight: bold; width: 22px; }
+  #move-legend .leg-tag  { font-size: 0.62rem; }
+  #move-legend .leg-note {
+    color: #4a5568;
+    font-size: 0.62rem;
+    line-height: 1.6;
   }
 
   h1 { font-size: 1.5rem; letter-spacing: 4px; margin-bottom: 16px; color: #9f7aea; }
@@ -250,6 +293,8 @@
 </style>
 </head>
 <body>
+<div id="game-area">
+<div id="game-main">
 <h1>CHAIN POP</h1>
 <div id="hud">
   <span>SCORE <strong id="score-display">0</strong></span>
@@ -264,6 +309,36 @@
 </div>
 <div id="grid"></div>
 <button id="new-game-btn">New Game</button>
+</div><!-- #game-main -->
+
+<div id="move-legend">
+  <div class="leg-title">BONUS MOVES</div>
+  <div class="leg-divider"></div>
+  <div class="leg-row">
+    <span class="leg-range">2–4</span>
+    <span class="leg-arrow">→</span>
+    <span class="leg-net" style="color:#555">–1</span>
+  </div>
+  <div class="leg-row">
+    <span class="leg-range">5–7</span>
+    <span class="leg-arrow">→</span>
+    <span class="leg-net" style="color:#68d391">±0</span>
+    <span class="leg-tag" style="color:#68d391">free</span>
+  </div>
+  <div class="leg-row">
+    <span class="leg-range">8–11</span>
+    <span class="leg-arrow">→</span>
+    <span class="leg-net" style="color:#f6c90e">+1</span>
+  </div>
+  <div class="leg-row">
+    <span class="leg-range">12+</span>
+    <span class="leg-arrow">→</span>
+    <span class="leg-net" style="color:#9f7aea">+2</span>
+  </div>
+  <div class="leg-divider"></div>
+  <div class="leg-note">each pop costs 1<br>bonus added back</div>
+</div><!-- #move-legend -->
+</div><!-- #game-area -->
 
 <div id="overlay">
   <div id="overlay-box">
