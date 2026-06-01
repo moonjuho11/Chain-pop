@@ -116,6 +116,7 @@
     grid-template-columns: repeat(8, 1fr);
     gap: 4px;
     width: min(480px, 96vw);
+    touch-action: none;
   }
 
   /* G. Board shake */
@@ -240,6 +241,22 @@
     50%       { transform: scale(1.2); color: #fff; }
   }
   #moves-display.danger { animation: danger-pulse 0.6s ease infinite; }
+  /* Entrance animation on new game */
+  @keyframes tile-enter {
+    0%   { transform: scale(0) rotate(-8deg); opacity: 0; }
+    70%  { transform: scale(1.1) rotate(2deg); }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+  .tile.entering {
+    animation: tile-enter 0.22s ease-out forwards;
+    opacity: 0;
+  }
+
+  /* Hide legend on narrow screens */
+  @media (max-width: 580px) {
+    #move-legend { display: none; }
+  }
+
   body.danger-mode::after {
     content: '';
     position: fixed;
@@ -369,6 +386,42 @@ let comboStreak = 0;
 let _lastRenderedScore = 0;
 let tileQueue = [];
 
+// --- Audio ---
+let audioCtx = null;
+function getAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function tone(freq, type, startTime, duration, volume) {
+  const ctx = getAudio();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.type = type; osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, startTime);
+  gain.gain.linearRampToValueAtTime(volume, startTime + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+  osc.start(startTime); osc.stop(startTime + duration);
+}
+function playPop(groupSize) {
+  const ctx = getAudio();
+  const f = 180 + groupSize * 35;
+  tone(f, 'sine', ctx.currentTime, 0.12, 0.25);
+  tone(f * 1.5, 'sine', ctx.currentTime, 0.07, 0.12);
+}
+function playBonus() {
+  const ctx = getAudio();
+  [440, 554, 660].forEach((f, i) => tone(f, 'sine', ctx.currentTime + i * 0.07, 0.18, 0.18));
+}
+function playCombo() {
+  const ctx = getAudio();
+  [330, 415, 523, 659].forEach((f, i) => tone(f, 'triangle', ctx.currentTime + i * 0.05, 0.22, 0.14));
+}
+function playGameOver() {
+  const ctx = getAudio();
+  [440, 370, 294].forEach((f, i) => tone(f, 'sawtooth', ctx.currentTime + i * 0.18, 0.28, 0.18));
+}
+
 function startNewGame() {
   clearTimeout(popTimer);
   animating = false;
@@ -388,6 +441,11 @@ function startNewGame() {
   document.getElementById('combo-badge').style.visibility = 'hidden';
   document.body.classList.remove('danger-mode');
   render();
+  document.querySelectorAll('.tile').forEach(tile => {
+    const r = parseInt(tile.dataset.r), c = parseInt(tile.dataset.c);
+    tile.style.animationDelay = `${(r + c) * 18}ms`;
+    tile.classList.add('entering');
+  });
 }
 
 function generateGrid() {
@@ -551,6 +609,7 @@ function popGroup(group) {
   animating = true;
   if (undosLeft > 0) undoSnapshot = { grid: grid.map(row => [...row]), score, movesLeft };
 
+  playPop(group.length);
   spawnParticles(group); // A — fires while tiles are still in DOM
 
   group.forEach(([r, c]) => {
@@ -566,7 +625,7 @@ function popGroup(group) {
     score += points;
     movesLeft--;
     const bonus = getBonusMoves(group.length);
-    if (bonus > 0) { movesLeft += bonus; showMovesBonus(bonus); }
+    if (bonus > 0) { movesLeft += bonus; showMovesBonus(bonus); playBonus(); }
 
     // F. Combo streak
     if (group.length >= 5) {
@@ -578,6 +637,7 @@ function popGroup(group) {
     if (comboStreak >= 2) {
       comboBadge.textContent = `×${comboStreak} COMBO!`;
       comboBadge.style.visibility = 'visible';
+      playCombo();
     } else {
       comboBadge.style.visibility = 'hidden';
     }
@@ -645,6 +705,7 @@ function checkEndConditions() {
 
 function showOverlay(title, msg) {
   gameOver = true;
+  playGameOver();
   document.getElementById('overlay-title').textContent = title;
   document.getElementById('overlay-msg').textContent = msg;
   document.getElementById('overlay').classList.add('visible');
@@ -696,28 +757,41 @@ function render() {
       tile.dataset.r = r;
       tile.dataset.c = c;
 
-      tile.addEventListener('mouseenter', () => {
+      const highlightGroup = () => {
         const group = findGroup(r, c);
         if (group.length < 2) return;
-        // C + D: shimmer (CSS) + color-matched glow (JS)
         group.forEach(([gr, gc]) => {
           const t = document.querySelector(`.tile[data-r="${gr}"][data-c="${gc}"]`);
           if (!t) return;
           t.classList.add('highlighted');
           t.style.boxShadow = `0 0 10px 3px ${TILE_COLORS[grid[gr][gc]] || '#fff'}`;
         });
-      });
-      tile.addEventListener('mouseleave', () => {
+      };
+      const clearHighlight = () => {
         document.querySelectorAll('.tile.highlighted').forEach(t => {
           t.classList.remove('highlighted');
           t.style.boxShadow = '';
         });
-      });
+      };
+      tile.addEventListener('mouseenter', highlightGroup);
+      tile.addEventListener('mouseleave', clearHighlight);
       tile.addEventListener('click', () => {
         const group = findGroup(r, c);
         if (group.length < 2) return;
         popGroup(group);
       });
+      tile.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        clearHighlight();
+        highlightGroup();
+      }, { passive: false });
+      tile.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        clearHighlight();
+        const group = findGroup(r, c);
+        if (group.length < 2) return;
+        popGroup(group);
+      }, { passive: false });
 
       gridEl.appendChild(tile);
     }
