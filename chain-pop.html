@@ -85,6 +85,33 @@
   }
   #grid.shake { animation: grid-shake 0.4s ease; }
 
+  #next-row {
+    width: min(480px, 96vw);
+    margin-bottom: 6px;
+  }
+  #next-label {
+    font-family: monospace;
+    font-size: 0.65rem;
+    color: #4a5568;
+    letter-spacing: 3px;
+    margin-bottom: 4px;
+  }
+  #next-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    width: 100%;
+    opacity: 0.55;
+  }
+  .next-tile {
+    height: 20px;
+    border-radius: 3px;
+  }
+  .next-tile[data-color="0"] { background: #9f7aea; }
+  .next-tile[data-color="1"] { background: #e94560; }
+  .next-tile[data-color="2"] { background: #63b3ed; }
+  .next-tile[data-color="3"] { background: #f6c90e; }
+
   .tile {
     aspect-ratio: 1;
     border-radius: 5px;
@@ -222,6 +249,10 @@
   <button id="undo-btn" disabled>UNDO (1)</button>
 </div>
 <div id="combo-badge"></div>
+<div id="next-row">
+  <div id="next-label">NEXT</div>
+  <div id="next-grid"></div>
+</div>
 <div id="grid"></div>
 <button id="new-game-btn">New Game</button>
 
@@ -252,6 +283,7 @@ let animating = false;
 let popTimer = null;
 let comboStreak = 0;
 let _lastRenderedScore = 0;
+let tileQueue = [];
 
 function startNewGame() {
   clearTimeout(popTimer);
@@ -264,6 +296,8 @@ function startNewGame() {
   undoSnapshot = null;
   gameOver = false;
   comboStreak = 0;
+  tileQueue = [];
+  fillQueue();
   grid = generateGrid();
   document.getElementById('overlay').classList.remove('visible');
   document.getElementById('watch-ad-btn').style.display = 'none';
@@ -315,14 +349,22 @@ function applyGravity() {
   }
 }
 
+function fillQueue() {
+  while (tileQueue.length < COLS * 2) {
+    tileQueue.push(Math.floor(Math.random() * NUM_COLORS));
+  }
+}
+
 function refillGrid() {
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       if (grid[r][c] === -1) {
-        grid[r][c] = Math.floor(Math.random() * NUM_COLORS);
+        if (!tileQueue.length) fillQueue();
+        grid[r][c] = tileQueue.shift();
       }
     }
   }
+  fillQueue();
 }
 
 function getBonusMoves(n) {
@@ -509,6 +551,15 @@ function render() {
   } else {
     movesEl.classList.remove('danger');
     document.body.classList.remove('danger-mode');
+  }
+
+  const nextGridEl = document.getElementById('next-grid');
+  nextGridEl.innerHTML = '';
+  for (let i = 0; i < COLS; i++) {
+    const t = document.createElement('div');
+    t.className = 'next-tile';
+    t.dataset.color = tileQueue[i] ?? 0;
+    nextGridEl.appendChild(t);
   }
 
   const gridEl = document.getElementById('grid');
