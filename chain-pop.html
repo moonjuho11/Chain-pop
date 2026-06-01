@@ -154,7 +154,6 @@ function startNewGame() {
   undosLeft = 1;
   undoSnapshot = null;
   gameOver = false;
-  animating = false;
   grid = generateGrid();
   document.getElementById('overlay').classList.remove('visible');
   document.getElementById('watch-ad-btn').style.display = 'none';
@@ -205,9 +204,9 @@ function applyGravity() {
 }
 
 function popGroup(group) {
-  if (group.length < 2 || animating) return;
+  if (group.length < 2 || animating || gameOver) return;
   animating = true;
-  if (undosLeft > 0) undoSnapshot = { grid: grid.map(row => [...row]), score };
+  if (undosLeft > 0) undoSnapshot = { grid: grid.map(row => [...row]), score, movesLeft };
 
   group.forEach(([r, c]) => {
     document.querySelector(`.tile[data-r="${r}"][data-c="${c}"]`)
@@ -320,6 +319,7 @@ function undo() {
   if (!undoSnapshot || undosLeft === 0 || animating) return;
   grid = undoSnapshot.grid;
   score = undoSnapshot.score;
+  movesLeft = undoSnapshot.movesLeft;
   undoSnapshot = null;
   undosLeft = 0;
   gameOver = false;
