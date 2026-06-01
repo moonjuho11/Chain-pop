@@ -129,6 +129,14 @@
   }
   #grid.shake { animation: grid-shake 0.4s ease; }
 
+  @keyframes tile-gravity {
+    from { transform: translateY(var(--fall-offset)); }
+    to   { transform: translateY(0); }
+  }
+  .tile.gravity-moving {
+    animation: tile-gravity 0.28s ease-out;
+  }
+
   @keyframes tile-fall {
     0%   { transform: translateY(-52px) scaleY(0.7); opacity: 0; }
     75%  { transform: translateY(4px) scaleY(1.04); opacity: 1; }
@@ -671,13 +679,12 @@ function popGroup(group) {
     gravityMoves.forEach(({ c, fromRow, toRow }) => {
       const tile = document.querySelector(`.tile[data-r="${toRow}"][data-c="${c}"]`);
       if (!tile) return;
-      const offset = (fromRow - toRow) * tileStep;
-      tile.style.transition = 'none';
-      tile.style.transform = `translateY(${offset}px)`;
-      void tile.offsetHeight;
-      tile.style.transition = 'transform 0.28s ease-out';
-      tile.style.transform = 'translateY(0)';
-      setTimeout(() => { tile.style.transition = ''; tile.style.transform = ''; }, 320);
+      tile.style.setProperty('--fall-offset', (fromRow - toRow) * tileStep + 'px');
+      tile.classList.add('gravity-moving');
+      tile.addEventListener('animationend', () => {
+        tile.classList.remove('gravity-moving');
+        tile.style.removeProperty('--fall-offset');
+      }, { once: true });
     });
     checkEndConditions();
   }, 150);
